@@ -5,7 +5,7 @@ function [q1,q2,q3] = my_ikine(x,y,z)
     function [x,y,z] = my_fkine(q1,q2,q3)
         % calculate the forward kinematics
         x = 10 * cos(q1) * cos(q2+q3) - 200 * cos(q1) * sin(q2+q3) ...
-        + 200 * cos(q1) * cos(q2) - 20 * sin(q1);
+			+ 200 * cos(q1) * cos(q2) - 20 * sin(q1);
         y = 10 * sin(q1) * cos(q2+q3) - 200 * sin(q1) * sin(q2+q3) ...
             + 200 * sin(q1) * cos(q2) + 20 * cos(q1);
         z = -10 * sin(q2+q3) - 200 * cos(q2+q3) - 200 * sin(q2);
