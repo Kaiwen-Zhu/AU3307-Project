@@ -1,0 +1,302 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage[UTF8]{ctex}
+\usepackage{float}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{gensymb}
+\usepackage{geometry}
+\usepackage{color}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{listings}
+\lstset{
+    numbers=left,  % 行号标在左边
+    frame=ltrb,  % 显示四周边框
+    frameround=tttt,  % 设置边框圆角
+    keywordstyle=\color{blue}, % 设置关键字颜色为黑色
+    backgroundcolor=\color[RGB]{245,245,244}
+}
+% \usepackage[framed,numbered,autolinebreaks,useliterate]{mcode}
+
+
+\title{机器人学课程设计}
+\author{姓名：朱楷文\\ 学号：520030910178\\ 班级：F2003001 }
+\date{}
+
+\geometry{a4paper,left=2.18cm,right=2.18cm,top=2.54cm,bottom=2.54cm}
+
+\begin{document}
+
+\maketitle
+
+\section{机械臂构建}
+\subsection{实现思路}
+Puma560 机械臂的 D-H 参数如表 \ref{DH} 所示, 其中 $\theta_i,\  i=1,2,\cdots,6$ 为关节变量, $a_2, d_3, a_3, d_4$ 为定值. 本设计中, 各关节变量的取值范围均为 $(-90\degree, 90\degree)$. 据此建立各连杆并将其连接, 即可得到机械臂.
+\begin{table}[H]
+    \centering
+    \caption{Puma560 机械臂的 D-H 参数表}
+    \label{DH}
+    \begin{tabular}{ccccc}
+    \toprule
+    $i$ & $\alpha_{i-1}$ & $a_{i-1}$ & $d_i$ & $\theta_i$  \\
+    \midrule
+    1   &  0 & 0 & 0 & $\theta_1$ \\
+    2   &  $-90\degree$ & 0 & 0 & $\theta_2$ \\
+    3   &  0 & $a_2$ & $d_3$ & $\theta_3$ \\
+    4   &  $-90\degree$ & $a_3$ & $d_4$ & $\theta_4$ \\
+    5   &  $90\degree$ & 0 & 0 & $\theta_5$ \\
+    6   &  $-90\degree$ & 0 & 0 & $\theta_6$ \\
+    \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsection{结果}
+构建出的机械臂如图 \ref{robot} 所示, 其各个关节变量均设为 0，$a_2, d_3, a_3, d_4$ 分别设为 100, 20, 10, 100.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.4\linewidth]{robot.png}
+    \caption{机械臂示意图}
+    \label{robot}
+\end{figure}
+
+\subsection{代码}
+构建机械臂的函数代码如下.
+\medskip
+\lstinputlisting[language=Matlab]{create_robot.m}
+
+
+\section{工作空间可视化}
+\subsection{实现思路}
+机械臂的工作空间是末端执行器可达到的空间范围, 即, 对于工作空间中的一个点 $\mathbf{p}$, 在关节空间中存在一个点 $\mathbf{q}$, 使得 $\mathbf{f}(\mathbf{q}) = \mathbf{p}$, 其中 $\mathbf{f}$ 为正运动学函数. 因此, 对关节空间中的每个点应用正运动学函数, 即可得到工作空间.\par
+实际操作中, 为了可视化工作空间, 由于不可能遍历关节空间中的所有点, 我们在其中进行均匀的随机采样, 对采样得到的每个点应用正运动学函数, 绘制出得到的位置. 若样本足够代表整个关节空间, 即可实现工作空间的可视化. 本设计选择样本容量为 20000.
+
+
+\subsection{结果}
+构建参数为 $a_2=100, d_3=20, a_3=10, d_4=100$ 的机械臂, 采样并计算后得到的工作空间如图 \ref{workspace} 所示, 其中每个红点表示采样并计算后得到的工作空间中的一个点. 工作空间在 X-Y 平面, Y-Z 平面, Z-X 平面上的投影如图 \ref{projection} 所示.
+\medskip
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.63\linewidth]{task1.png}
+    \caption{机械臂的工作空间}
+    \label{workspace}
+\end{figure}
+\medskip
+
+\begin{figure}[H]
+    \centering
+    \subfloat[\label{xy}X-Y 平面上的投影]{\includegraphics[width=0.3\linewidth]{task1xy.png}}
+    \hspace{3pt}
+    \subfloat[\label{yz}Y-Z 平面上的投影]{\includegraphics[width=0.3\linewidth]{task1yz.png}}
+    \hspace{3pt}
+    \subfloat[\label{zx}Z-X 平面上的投影]{\includegraphics[width=0.3\linewidth]{task1zx.png}}
+    \caption{\label{projection}工作空间在各平面上的投影}
+\end{figure}
+\medskip
+
+\subsection{代码}
+可视化工作空间的代码如下.
+\medskip
+\lstinputlisting[language=Matlab]{task1.m}
+
+
+\section{避障路径规划}
+\subsection{实现思路}
+欲控制机械臂避开障碍物从起点到达终点, 只需观察出安全的末端执行器路径, 选取合适的锚点, 利用逆运动学计算出各锚点对应的关节变量, 在这些关节变量之间进行平滑的插值, 最后令机械臂按照插值结果运动即可.\par
+本设计中, 障碍物为长方体, 中心为 (100, 0, 50), 大小为 (200, 30, 150), 路径的起点为 (100, 100, 10), 终点为 (100, -100,10). 因此取锚点为: 起点 (100, 100, 10), 起点正上方 (100, 100, 200), 终点正上方 (100, -100, 200), 终点 (100, -100, 10). 选取机械臂参数为 $a_2=200, d_3=20, a_3=10, d_4=200$, 基座位置为 (-100, 0, 0). 但是, 在 Matlab 中调用函数 \verb|ikine| 求解逆运动学时出现了无法收敛的错误. 推测这是由于传入的末端执行器朝向无法达到. 可达的朝向是难以获知的, 而事实上, 这里我们只关心末端执行器的位置而并不关心其朝向, 而位置仅由前三个关节变量决定. 因此考虑推导其前三个关节变量的解析解, 后三个关节变量设为 0 即可.\par
+给定末端位置 $(x,y,z)$, 下面求解其逆运动学.\par
+机械臂前4个关节的齐次变换矩阵计算如下, 其中 $\theta_4$ 设为0.
+\[
+^0T_1 = 
+\begin{pmatrix}
+c_1 & -s_1 & 0 & 0\\
+s_1 & c_1 & 0 & 0\\
+0 & 0 & 1 & 0\\
+0 & 0 & 0 & 1
+\end{pmatrix}, \quad
+^1T_2 = 
+\begin{pmatrix}
+c_2 & -s_2 & 0 & 0\\
+0 & 0 & 1 & 0\\
+-s_2 & -c_2 & 0 & 0\\
+0 & 0 & 0 & 1
+\end{pmatrix},
+\]
+\[
+^2T_3 = 
+\begin{pmatrix}
+c_3 & -s_3 & 0 & 200\\
+s_3 & c_3 & 0 & 0\\
+0 & 0 & 1 & 20\\
+0 & 0 & 0 & 1
+\end{pmatrix}, \quad
+^3T_4 = 
+\begin{pmatrix}
+1 & 0 & 0 & 10\\
+0 & 0 & 1 & 200\\
+0 & -1 & 0 & 0\\
+0 & 0 & 0 & 1
+\end{pmatrix}.
+\]
+进而可得
+\[
+^0T_2 = ^0T_1 ^1T_2 = 
+\begin{pmatrix}
+c_1 c_2 & -c_1 s_2 & -s_1 & 0\\
+s_1 c_2 & -s_1 s_2 & c_1 & 0\\
+-s_2 & -c_2 & 0 & 0\\
+0 & 0 & 0 & 1
+\end{pmatrix},
+\]
+\[
+^0T_3 = ^0T_2 ^2T_3 = 
+\begin{pmatrix}
+c_1 c_{23} & -c_1 s_{23} & -s_1 & 200c_1c_2-20s_1\\
+s_1 c_{23} & -s_1 s_{23} & c_1 & 200s_1c_2+20c_1\\
+-s_{23} & -c_{23} & 0 & -200s_2\\
+0 & 0 & 0 & 1
+\end{pmatrix},
+\]
+\[
+^0T_4 = ^0T_3 ^3T_4 = 
+\begin{pmatrix}
+c_1 c_{23} & -c_1 s_{23} & -s_1 & 10c_1c_{23}-200c_1s_{23}+200c_1c_2-20s_1\\
+s_1 c_{23} & -s_1 s_{23} & c_1 & 10s_1c_{23}-200s_1s_{23}+200s_1c_2+20c_1\\
+-s_{23} & -c_{23} & 0 & -10s_{23}-200c_{23}-200s_2\\
+0 & 0 & 0 & 1
+\end{pmatrix},
+\]
+由于后三个关节变量不影响末端执行器位置, 因此末端位置为
+\[
+\mathbf{p} =
+\begin{pmatrix}
+10c_1c_{23}-200c_1s_{23}+200c_1c_2-20s_1\\ 10s_1c_{23}-200s_1s_{23}+200s_1c_2+20c_1\\ -10s_{23}-200c_{23}-200s_2
+\end{pmatrix}.
+\]
+于是可以列出方程组
+\begin{subequations}
+    \label{fkine}
+    % \left\{
+    \begin{align}
+     &x = 10c_1c_{23}-200c_1s_{23}+200c_1c_2-20s_1 \label{x} \\
+     &y = 10s_1c_{23}-200s_1s_{23}+200s_1c_2+20c_1 \label{y} \\
+     &z = -10s_{23}-200c_{23}-200s_2 \label{z}
+    \end{align}
+    % \right.
+\end{subequations}
+设
+\begin{equation}
+\label{A}
+A = 10c_{23}-200s_{23}+200c_2,
+\end{equation}
+则式 \eqref{x} 和式 \eqref{y} 可写成
+\begin{subequations}
+    % \left\{
+    \begin{align}
+     &x = Ac_1 - 20s_1 \label{Ax} \\
+     &y = As_1 + 20c_1 \label{Ay}
+    \end{align}
+    % \right.
+\end{subequations}
+$\eqref{Ax}^2 + \eqref{Ay}^2$, 得
+\begin{equation}
+\label{Axy}
+A^2 = x^2 + y^2 - 400,
+\end{equation}
+$\eqref{A}^2 + \eqref{z}^2$, 整理可得
+\begin{equation}
+    \frac{A^2+z^2}{100} = 801 + 40 (c_3 - 20s_3),
+\end{equation}
+将 \eqref{Axy} 代入上式, 并设
+\begin{equation}
+    \label{rho}
+    \rho^2 = x^2 + y^2 + z^2,
+\end{equation}
+整理可得,
+\begin{equation}
+    \label{preq3}
+    c_3 - 20s_3 = \frac{\rho^2 - 80500}{4000},
+\end{equation}
+设
+\begin{equation}
+    \label{B}
+    B = \frac{\rho^2 - 80500}{4000},
+\end{equation}
+将其代入式 \eqref{preq3}, 并应用辅助角公式, 可得
+\begin{equation}
+    \label{q3}
+    \sqrt{401}\sin(\theta_3 + \phi_1) = B,
+\end{equation}
+其中 $\phi_1 = \arctan(\frac{1}{-20}) + \pi$. 由此即可解出 $\theta_3$.\par
+将解得的 $\theta_3$ 代回式 \eqref{z}, 整理可得
+\begin{equation}
+    \label{preq2}
+    (B+20)s_2 + (s_3+20c_3)c_2 = \frac{z}{-10}.
+\end{equation}
+设
+\begin{equation}
+    \label{C}
+    C = B + 20,
+\end{equation}
+\begin{equation}
+    \label{D}
+    D = s_3+20c_3.
+\end{equation}
+注意到, $C = (\rho^2 - 500)/4000$, 而本设计选取的路径上的点显然都满足到基座的距离大于 $\sqrt{500}$, 因此可以保证 $C > 0$. 从而, 对式 \eqref{preq2} 应用辅助角公式, 并将式 \eqref{C} 和式 \eqref{D} 代入, 可得
+\begin{equation}
+    \label{q2}
+    \sqrt{C^2+D^2} \sin(\theta_2 + \phi_2) = \frac{z}{-10},
+\end{equation}
+其中 $\phi_2 = \arctan(D/C)$. 由此即可解出 $\theta_2$.\par
+$\eqref{Ay} \times A - \eqref{Ax} \times 20$, 结合式 \eqref{Axy}, 整理可得
+\begin{equation}
+    \label{q1}
+    s_1 = \frac{yA - 20x}{x^2+y^2}.
+\end{equation}
+将解得的 $\theta_2,\theta_3$ 代入式 \eqref{A} 即可得到 $A$ 的值. 考虑到 $\theta_1 \in (-\pi/2, \pi/2)$, 由式 \eqref{q1} 立刻得到
+\begin{equation}
+    \label{solvedq1}
+    \theta_1 = \arcsin(\frac{yA - 20x}{x^2+y^2}).
+\end{equation}
+至此, $\theta_1,\theta_2,\theta_3$ 的解析解已全部可以给出. 需要说明的是, $\theta_2,\theta_3$ 的值分别由式 \eqref{q2} 和式 \eqref{q3} 给出, 但这两个式子各自可能存在两个解. 因此, 在计算出可能的解后, 应将结果代回正运动学公式 \eqref{fkine} 进行验证. 此外, 还需要考虑 $\theta_2,\theta_3$ 的值应在 $(-\pi/2,\pi/2)$ 范围内. 具体的实施细节见下文列出的 \verb|my_ikine| 函数代码.
+
+
+\subsection{结果}
+按照以上思路, 计算出的机械臂从起点到终点的工作空间路径如图 \ref{path} 所示, 各子图展示了机械臂在路径的起点、中点、终点时其不同视角下的姿态. 图中, 两个红色的点代表起点和终点, 蓝色的曲线代表路径.\par
+机械臂运动过程中, 其各关节角度的变化曲线如图 \ref{angle} 所示. 注意 $\theta_4,\theta_5,\theta_6$ 始终为 0, 因而其曲线重合.\par
+\begin{figure}[H]
+    \centering
+    \subfloat[\label{path-s1}起点处 (视角 1)]{\includegraphics[width=0.4\linewidth]{task2_path_start1.png}}
+    \hspace{3pt}
+    \subfloat[\label{path-s2}起点处 (视角 2)]{\includegraphics[width=0.4\linewidth]{task2_path_start2.png}}
+    \\
+    \subfloat[\label{path-m}中点处]{\includegraphics[width=0.4\linewidth]{task2_path_mid.png}}
+    \\
+    \subfloat[\label{path-e1}终点处 (视角 1)]{\includegraphics[width=0.4\linewidth]{task2_path_end1.png}}
+    \hspace{3pt}
+    \subfloat[\label{path-e2}终点处 (视角 2)]{\includegraphics[width=0.4\linewidth]{task2_path_end2.png}}
+    \caption{\label{path}机械臂从起点到终点的工作空间路径及在运动中的姿态}
+\end{figure}
+\medskip
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\linewidth]{task2_curve.png}
+    \caption{机械臂各关节角度的变化}
+    \label{angle}
+\end{figure}
+
+
+
+\subsection{代码}
+计算逆运动学的代码如下.\par
+\medskip
+\lstinputlisting[language=Matlab]{my_ikine.m}
+\medskip
+规划避障路径的代码如下.\par
+\medskip
+\lstinputlisting[language=Matlab]{task2.m}
+
+
+
+\end{document}
