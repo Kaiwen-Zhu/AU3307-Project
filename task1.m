@@ -1,6 +1,6 @@
 clear; close all; clc;
 
-% create the robot with a2=100,d3=20,a3=10,d4=100
+% create the robot
 my_p560 = create_robot(100,20,10,100);
 
 % plot the robot

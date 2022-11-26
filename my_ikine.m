@@ -4,19 +4,19 @@ function [q1,q2,q3] = my_ikine(x,y,z)
     
     function [x,y,z] = my_fkine(q1,q2,q3)
         % calculate the forward kinematics
-        x = 10 * cos(q1) * cos(q2+q3) - 200 * cos(q1) * sin(q2+q3) ...
-			+ 200 * cos(q1) * cos(q2) - 20 * sin(q1);
-        y = 10 * sin(q1) * cos(q2+q3) - 200 * sin(q1) * sin(q2+q3) ...
-            + 200 * sin(q1) * cos(q2) + 20 * cos(q1);
-        z = -10 * sin(q2+q3) - 200 * cos(q2+q3) - 200 * sin(q2);
+        x = 10 * cos(q1) * cos(q2+q3) - 100 * cos(q1) * sin(q2+q3) ...
+			+ 100 * cos(q1) * cos(q2) - 20 * sin(q1);
+        y = 10 * sin(q1) * cos(q2+q3) - 100 * sin(q1) * sin(q2+q3) ...
+            + 100 * sin(q1) * cos(q2) + 20 * cos(q1);
+        z = -10 * sin(q2+q3) - 100 * cos(q2+q3) - 100 * sin(q2);
     end
 
     function [q3_1, q3_2] = get_q3(x,y,z)
        rho2 = x*x + y*y + z*z;
-       B = (rho2 - 80500) / 4000;
-       phi1 = atan(1/(-20)) + pi;
-       q3_p_phi1_m_pi = asin(-B/sqrt(401));  % q3 + phi1 - pi
-       if tan(q3_p_phi1_m_pi) < -20
+       B = (rho2 - 20500) / 2000;
+       phi1 = atan(1/(-10)) + pi;
+       q3_p_phi1_m_pi = asin(-B/sqrt(101));  % q3 + phi1 - pi
+       if tan(q3_p_phi1_m_pi) < -10
            q3_p_phi1_m_pi_2 = -pi - q3_p_phi1_m_pi;
        else
            q3_p_phi1_m_pi_2 = 1453;
@@ -26,8 +26,8 @@ function [q1,q2,q3] = my_ikine(x,y,z)
     end
 
     function [q2_1,q2_2] = get_q2(z,q3)
-        C = cos(q3) - 20 * sin(q3) + 20;
-        D = sin(q3) + 20 * cos(q3);
+        C = cos(q3) - 10 * sin(q3) + 10;
+        D = sin(q3) + 10 * cos(q3);
         phi2 = atan(D / C);
         if (-1 <= -z/10/sqrt(C*C + D*D)) && (-z/10/sqrt(C*C + D*D) <= 1)
             q2_p_phi2 = asin(-z/10/sqrt(C*C + D*D));  % q2 + phi2
@@ -45,7 +45,7 @@ function [q1,q2,q3] = my_ikine(x,y,z)
     end
 
     function q1 = get_q1(x,y,q2,q3)
-        A = 10 * cos(q2+q3) - 200 * sin(q2+q3) + 200 * cos(q2);
+        A = 10 * cos(q2+q3) - 100 * sin(q2+q3) + 100 * cos(q2);
         q1 = asin((y*A - 20*x) / (x*x + y*y));
     end
 
